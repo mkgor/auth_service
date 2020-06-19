@@ -1,0 +1,52 @@
+# Последняя версия docker-compose
+version: '3'
+
+# Создаем общую сеть deafult для всех контейнеров
+networks:
+  default:
+    driver: bridge
+
+# Создаем отдельные контейнеры
+services:
+  # Контейнер с веб-приложением
+  app:
+    # Собираем из Dockerfile
+    build:
+      # Корнем указываем корень основного проекта
+      context: .
+      dockerfile: ./docker/app/Dockerfile
+    # Показываем наружу 80 порт
+    ports:
+      - "80:80"
+    # Подключаем к общей сети с другими контейнерами
+    networks:
+      - default
+    # Запускаем только после db
+    depends_on:
+      - db
+    # Линкуем внешнюю папку с исходниками внутрь
+    volumes:
+      - ".:/var/www/app"
+      # Так же линкуем конфиг для nginx
+      - "./docker/app/conf/nginx:/etc/nginx/sites-available"
+    links:
+      - db:db
+  # Контейнер с базой данных
+  db:
+    image: mysql:latest
+    # Подключаем к общей сети с другими контейнерами
+    networks:
+      - default
+    # Показываем наружу порт
+    ports:
+      - "3336:3306"
+    # Задаем параметры для инициализации БД
+    environment:
+      # Пароль к БД
+      MYSQL_ROOT_PASSWORD: root
+      # Создаваемая по умолчанию бд
+      MYSQL_DATABASE: auth_service
+      DB_PATH_HOST: /tmp/mysql
+    # Линкуем внешнюю папку для хранения БД
+    volumes:
+      - "./docker/db:/var/lib/mysql"
